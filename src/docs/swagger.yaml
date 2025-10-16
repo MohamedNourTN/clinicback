@@ -1,0 +1,635 @@
+openapi: 3.0.0
+info:
+  title: Clinic Management System API
+  version: 1.0.0
+  description: A comprehensive REST API for clinic management including patient management, appointments, medical records, billing, and inventory.
+  contact:
+    name: API Support
+    email: ''
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: http://localhost:3000
+    description: Development server
+  - url: https://api.clinicpro.com
+    description: Production server
+
+paths:
+  # Authentication endpoints
+  /api/auth/register:
+    post:
+      tags:
+        - Authentication
+      summary: Register a new user
+      description: Create a new user account with the specified role
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserRegistration'
+      responses:
+        '201':
+          description: User created successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          user:
+                            $ref: '#/components/schemas/User'
+                          token:
+                            type: string
+        '400':
+          description: Validation failed or user already exists
+        '500':
+          description: Internal server error
+
+  /api/auth/login:
+    post:
+      tags:
+        - Authentication
+      summary: User login
+      description: Authenticate user and return JWT token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserLogin'
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          user:
+                            $ref: '#/components/schemas/User'
+                          token:
+                            type: string
+        '401':
+          description: Invalid credentials
+        '500':
+          description: Internal server error
+
+  # Dashboard endpoints
+  /api/dashboard/admin:
+    get:
+      tags:
+        - Dashboard
+      summary: Get admin dashboard statistics
+      description: |
+        Retrieve comprehensive dashboard statistics and analytics for clinic administrators:
+        
+        **Key Metrics Included:**
+        - Total patient count and new patient registrations (daily/monthly trends)
+        - Appointment statistics (scheduled, completed, cancelled, no-shows)
+        - Revenue analytics with payment method breakdowns
+        - Inventory status including low stock alerts and reorder recommendations
+        - Staff productivity metrics and workload distribution
+        - Department-wise performance indicators
+        
+        **Financial Analytics:**
+        - Daily, monthly, and yearly revenue trends
+        - Outstanding invoices and payment collection rates
+        - Service popularity and profitability analysis
+        - Cost center analysis by department
+        - Insurance vs. cash payment ratios
+        
+        **Operational Insights:**
+        - Appointment scheduling efficiency and doctor utilization
+        - Patient satisfaction scores and feedback trends
+        - Average wait times and service delivery metrics
+        - Resource utilization across departments
+        - Growth metrics and comparative period analysis
+        
+        **Real-time Data:**
+        - Current active appointments and queue status
+        - Today's revenue and patient check-ins
+        - Staff attendance and availability
+        - Critical alerts and system notifications
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Dashboard statistics retrieved successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          totalPatients:
+                            type: integer
+                          newPatientsToday:
+                            type: integer
+                          totalAppointments:
+                            type: integer
+                          completedAppointments:
+                            type: integer
+                          totalRevenue:
+                            type: number
+                          todayRevenue:
+                            type: number
+                          pendingInvoices:
+                            type: integer
+                          lowStockItems:
+                            type: integer
+        '401':
+          description: Unauthorized
+        '500':
+          description: Internal server error
+
+  # Payroll endpoints
+  /api/payroll:
+    post:
+      tags:
+        - Payroll
+      summary: Create a new payroll entry
+      description: Create a new payroll entry for an employee for a specific month and year. This endpoint allows tracking of salary, overtime, bonuses, allowances, deductions, and tax calculations.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                employee_id:
+                  type: string
+                  format: objectId
+                  description: MongoDB ObjectId of the employee
+                  example: "507f1f77bcf86cd799439011"
+                month:
+                  type: string
+                  enum: [January, February, March, April, May, June, July, August, September, October, November, December]
+                  description: Month for the payroll period
+                  example: "January"
+                year:
+                  type: integer
+                  minimum: 2020
+                  maximum: 2030
+                  description: Year for the payroll period
+                  example: 2024
+                base_salary:
+                  type: number
+                  minimum: 0
+                  description: Basic salary amount for the employee
+                  example: 5000.00
+                overtime:
+                  type: number
+                  minimum: 0
+                  description: Overtime payment amount
+                  example: 300.00
+                bonus:
+                  type: number
+                  minimum: 0
+                  description: Bonus amount for performance or special incentives
+                  example: 500.00
+                allowances:
+                  type: number
+                  minimum: 0
+                  description: Additional allowances (transport, medical, etc.)
+                  example: 200.00
+                deductions:
+                  type: number
+                  minimum: 0
+                  description: Deductions from salary (loans, advances, etc.)
+                  example: 100.00
+                tax:
+                  type: number
+                  minimum: 0
+                  description: Tax deducted from salary
+                  example: 600.00
+                working_days:
+                  type: integer
+                  minimum: 0
+                  maximum: 31
+                  description: Number of days the employee worked
+                  example: 22
+                total_days:
+                  type: integer
+                  minimum: 28
+                  maximum: 31
+                  description: Total number of working days in the month
+                  example: 22
+                leaves:
+                  type: integer
+                  minimum: 0
+                  description: Number of leave days taken
+                  example: 2
+                status:
+                  type: string
+                  enum: [draft, pending, processed, paid]
+                  default: draft
+                  description: Current status of the payroll entry
+                  example: "draft"
+              required:
+                - employee_id
+                - month
+                - year
+                - base_salary
+                - working_days
+                - total_days
+      responses:
+        '201':
+          description: Payroll entry created successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/Payroll'
+        '400':
+          description: Validation failed or payroll entry already exists for this employee in the specified month/year
+        '401':
+          description: Unauthorized
+        '500':
+          description: Internal server error
+    get:
+      tags:
+        - Payroll
+      summary: Get all payroll entries with filtering
+      description: Retrieve all payroll entries with support for pagination and filtering by status, month, year, employee, and department. This endpoint provides comprehensive payroll management and reporting capabilities.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          description: Page number for pagination
+          schema:
+            type: integer
+            default: 1
+            minimum: 1
+          example: 1
+        - name: limit
+          in: query
+          description: Number of items per page
+          schema:
+            type: integer
+            default: 10
+            minimum: 1
+            maximum: 100
+          example: 10
+        - name: status
+          in: query
+          description: Filter by payroll status
+          schema:
+            type: string
+            enum: [draft, pending, processed, paid]
+          example: "processed"
+        - name: month
+          in: query
+          description: Filter by specific month
+          schema:
+            type: string
+            enum: [January, February, March, April, May, June, July, August, September, October, November, December]
+          example: "January"
+        - name: year
+          in: query
+          description: Filter by specific year
+          schema:
+            type: integer
+          example: 2024
+        - name: employee_id
+          in: query
+          description: Filter by specific employee
+          schema:
+            type: string
+            format: objectId
+          example: "507f1f77bcf86cd799439011"
+        - name: department
+          in: query
+          description: Filter by employee department
+          schema:
+            type: string
+          example: "Cardiology"
+      responses:
+        '200':
+          description: Payroll entries retrieved successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          items:
+                            type: array
+                            items:
+                              $ref: '#/components/schemas/Payroll'
+                          pagination:
+                            $ref: '#/components/schemas/PaginationInfo'
+        '401':
+          description: Unauthorized
+        '500':
+          description: Internal server error
+
+  /api/payroll/stats:
+    get:
+      tags:
+        - Payroll
+      summary: Get payroll statistics and analytics
+      description: Retrieve comprehensive payroll statistics including total payroll expenses, department-wise breakdowns, monthly trends, and employee salary analytics.
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Payroll statistics retrieved successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          totalEmployees:
+                            type: integer
+                            description: Total number of employees with payroll entries
+                          monthlyPayroll:
+                            type: number
+                            description: Total payroll amount for current month
+                          yearlyPayroll:
+                            type: number
+                            description: Total payroll amount for current year
+                          departmentBreakdown:
+                            type: array
+                            items:
+                              type: object
+                              properties:
+                                department:
+                                  type: string
+                                totalAmount:
+                                  type: number
+                                employeeCount:
+                                  type: integer
+        '401':
+          description: Unauthorized
+        '500':
+          description: Internal server error
+
+  /api/payroll/{id}:
+    get:
+      tags:
+        - Payroll
+      summary: Get a specific payroll entry by ID
+      description: Retrieve detailed information about a specific payroll entry including employee details and calculated amounts.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Payroll entry ID
+          schema:
+            type: string
+            format: objectId
+          example: "507f1f77bcf86cd799439011"
+      responses:
+        '200':
+          description: Payroll entry retrieved successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/Payroll'
+        '400':
+          description: Invalid payroll ID
+        '401':
+          description: Unauthorized
+        '404':
+          description: Payroll entry not found
+        '500':
+          description: Internal server error
+
+components:
+  schemas:
+    SuccessResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        message:
+          type: string
+          example: "Operation completed successfully"
+
+    PaginationInfo:
+      type: object
+      properties:
+        page:
+          type: integer
+          example: 1
+        limit:
+          type: integer
+          example: 10
+        total:
+          type: integer
+          example: 100
+        pages:
+          type: integer
+          example: 10
+
+    UserRegistration:
+      type: object
+      properties:
+        first_name:
+          type: string
+          example: "John"
+        last_name:
+          type: string
+          example: "Doe"
+        email:
+          type: string
+          format: email
+          example: "john.doe@example.com"
+        password:
+          type: string
+          minLength: 8
+          example: "securePassword123"
+        role:
+          type: string
+          enum: [admin, doctor, nurse, receptionist, staff]
+          example: "doctor"
+        phone:
+          type: string
+          example: "+1234567890"
+        department:
+          type: string
+          example: "Cardiology"
+      required:
+        - first_name
+        - last_name
+        - email
+        - password
+        - role
+
+    UserLogin:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+          example: "john.doe@example.com"
+        password:
+          type: string
+          example: "securePassword123"
+      required:
+        - email
+        - password
+
+    User:
+      type: object
+      properties:
+        _id:
+          type: string
+          format: objectId
+          example: "507f1f77bcf86cd799439011"
+        first_name:
+          type: string
+          example: "John"
+        last_name:
+          type: string
+          example: "Doe"
+        email:
+          type: string
+          format: email
+          example: "john.doe@example.com"
+        role:
+          type: string
+          enum: [admin, doctor, nurse, receptionist, staff]
+          example: "doctor"
+        phone:
+          type: string
+          example: "+1234567890"
+        department:
+          type: string
+          example: "Cardiology"
+        is_active:
+          type: boolean
+          example: true
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    Payroll:
+      type: object
+      properties:
+        _id:
+          type: string
+          format: objectId
+          description: Unique identifier for the payroll entry
+          example: "507f1f77bcf86cd799439011"
+        employee_id:
+          $ref: '#/components/schemas/User'
+          description: Employee information (populated)
+        month:
+          type: string
+          enum: [January, February, March, April, May, June, July, August, September, October, November, December]
+          description: Payroll month
+          example: "January"
+        year:
+          type: integer
+          description: Payroll year
+          example: 2024
+        base_salary:
+          type: number
+          description: Base salary amount
+          example: 5000.00
+        overtime:
+          type: number
+          description: Overtime payment
+          example: 300.00
+        bonus:
+          type: number
+          description: Bonus amount
+          example: 500.00
+        allowances:
+          type: number
+          description: Total allowances
+          example: 200.00
+        deductions:
+          type: number
+          description: Total deductions
+          example: 100.00
+        tax:
+          type: number
+          description: Tax amount
+          example: 600.00
+        gross_pay:
+          type: number
+          description: Calculated gross pay (base_salary + overtime + bonus + allowances)
+          example: 6000.00
+        net_pay:
+          type: number
+          description: Calculated net pay (gross_pay - deductions - tax)
+          example: 5300.00
+        working_days:
+          type: integer
+          description: Number of working days
+          example: 22
+        total_days:
+          type: integer
+          description: Total days in month
+          example: 22
+        leaves:
+          type: integer
+          description: Number of leave days
+          example: 2
+        status:
+          type: string
+          enum: [draft, pending, processed, paid]
+          description: Current payroll status
+          example: "processed"
+        created_at:
+          type: string
+          format: date-time
+          description: Creation timestamp
+        updated_at:
+          type: string
+          format: date-time
+          description: Last update timestamp
+      required: [employee_id, month, year, base_salary, working_days, total_days]
+
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT token for authentication
+  
